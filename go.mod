@@ -1,4 +1,4 @@
-module zhoukk/kttyd
+module github.com/zhoukk/kttyd
 
 go 1.21.4
 
