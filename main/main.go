@@ -3,14 +3,19 @@ package main
 import (
 	"log"
 	"time"
-	"zhoukk/kttyd"
+
+	"github.com/zhoukk/kttyd"
 )
 
 func main() {
-	tty, err := kttyd.NewKttyd(":0", "admin:admin", "bash", []string{})
+	tty, err := kttyd.NewKttyd(":0", "bash", []string{})
 	if err != nil {
 		log.Println(err)
 	}
+
+	tty.SetBasicAuth("admin:admin").SetWorkdir("./").SetLogger(func(err error) {
+		log.Println(err)
+	})
 
 	log.Printf("http://127.0.0.1:%s%s", tty.Port, tty.Path)
 

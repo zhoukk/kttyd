@@ -24,9 +24,10 @@ import (
 type Kttyd struct {
 	Port     string
 	Path     string
-	baseAuth string
+	auth     string
 	command  string
 	argv     []string
+	workdir  string
 	errlog   func(error)
 	listener net.Listener
 	srv      *http.Server
@@ -42,7 +43,7 @@ func randString(n int) string {
 	return string(b)
 }
 
-func NewKttyd(bindAddress string, baseAuth string, command string, args []string) (*Kttyd, error) {
+func NewKttyd(bindAddress string, command string, args []string) (*Kttyd, error) {
 	listener, err := net.Listen("tcp4", bindAddress)
 	if err != nil {
 		return nil, err
@@ -50,7 +51,22 @@ func NewKttyd(bindAddress string, baseAuth string, command string, args []string
 
 	_, port, _ := net.SplitHostPort(listener.Addr().String())
 	path := "/" + randString(16) + "/"
-	return &Kttyd{Port: port, Path: path, baseAuth: baseAuth, command: command, argv: args, listener: listener}, nil
+	return &Kttyd{Port: port, Path: path, command: command, argv: args, listener: listener}, nil
+}
+
+func (ctx *Kttyd) SetBasicAuth(auth string) *Kttyd {
+	ctx.auth = auth
+	return ctx
+}
+
+func (ctx *Kttyd) SetWorkdir(workdir string) *Kttyd {
+	ctx.workdir = workdir
+	return ctx
+}
+
+func (ctx *Kttyd) SetLogger(errlog func(error)) *Kttyd {
+	ctx.errlog = errlog
+	return ctx
 }
 
 func CacheControlWrapper(h http.Handler) http.Handler {
@@ -113,18 +129,14 @@ func (ctx *Kttyd) Start() error {
 	}
 
 	fsys, _ := fs.Sub(embed_static, "static")
-	http.Handle(ctx.Path, BasicAuthWrapper(CacheControlWrapper(http.StripPrefix(ctx.Path, http.FileServer(http.FS(fsys)))), ctx.baseAuth))
-	http.Handle(ctx.Path+"ws", BasicAuthWrapper(http.HandlerFunc(wsHandleFunc), ctx.baseAuth))
+	http.Handle(ctx.Path, BasicAuthWrapper(CacheControlWrapper(http.StripPrefix(ctx.Path, http.FileServer(http.FS(fsys)))), ctx.auth))
+	http.Handle(ctx.Path+"ws", BasicAuthWrapper(http.HandlerFunc(wsHandleFunc), ctx.auth))
 
 	return ctx.srv.Serve(ctx.listener)
 }
 
 func (ctx *Kttyd) Stop() {
 	ctx.srv.Shutdown(context.Background())
-}
-
-func (ctx *Kttyd) SetLogger(errlog func(error)) {
-	ctx.errlog = errlog
 }
 
 type KttydSlave interface {
@@ -201,6 +213,9 @@ func (ctx *kttydSlave) closeTimeoutC() <-chan time.Time {
 func (ctx *Kttyd) newSlave() (KttydSlave, error) {
 	cmd := exec.Command(ctx.command, ctx.argv...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
+	if ctx.workdir != "" {
+		cmd.Dir = ctx.workdir
+	}
 
 	pty, err := pty.Start(cmd)
 	if err != nil {
