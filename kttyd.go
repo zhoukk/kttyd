@@ -28,6 +28,7 @@ type Kttyd struct {
 	command  string
 	argv     []string
 	workdir  string
+	title    string
 	errlog   func(error)
 	listener net.Listener
 	srv      *http.Server
@@ -61,6 +62,11 @@ func (ctx *Kttyd) SetBasicAuth(auth string) *Kttyd {
 
 func (ctx *Kttyd) SetWorkdir(workdir string) *Kttyd {
 	ctx.workdir = workdir
+	return ctx
+}
+
+func (ctx *Kttyd) SetTitle(title string) *Kttyd {
+	ctx.title = title
 	return ctx
 }
 
@@ -296,7 +302,7 @@ func (ctx *Kttyd) handle(conn *websocket.Conn, wsctx context.Context) error {
 	defer slave.Close()
 
 	opts := []Option{
-		WithWindowTitle([]byte(fmt.Sprintf("kttyd@%s", conn.RemoteAddr()))),
+		WithWindowTitle([]byte(ctx.title)),
 	}
 	opts = append(opts, WithPermitWrite())
 	opts = append(opts, WithReconnect(10))

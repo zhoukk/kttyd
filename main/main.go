@@ -13,7 +13,7 @@ func main() {
 		log.Println(err)
 	}
 
-	tty.SetBasicAuth("admin:admin").SetWorkdir("./").SetLogger(func(err error) {
+	tty.SetBasicAuth("admin:admin").SetTitle("test@kttyd").SetWorkdir("./").SetLogger(func(err error) {
 		log.Println(err)
 	})
 
