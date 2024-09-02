@@ -142,7 +142,7 @@ func (ctx *Kttyd) Start() error {
 }
 
 func (ctx *Kttyd) Stop() {
-	ctx.srv.Shutdown(context.Background())
+	ctx.srv.Close()
 }
 
 type KttydSlave interface {
